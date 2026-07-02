@@ -17,8 +17,12 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "456458499374",
 };
 
+const FIRESTORE_DB_ID =
+  process.env.NEXT_PUBLIC_FIRESTORE_DB_ID ||
+  "ai-studio-4eea3ee6-d3e1-41ad-b959-3632f0fa4212";
+
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app, FIRESTORE_DB_ID);
 const auth = getAuth(app);
 
 export {
