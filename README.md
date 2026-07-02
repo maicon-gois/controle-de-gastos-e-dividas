@@ -9,44 +9,58 @@ App pessoal de controle financeiro com projeção de dívidas, análise de consu
 - **Banco**: Firebase Firestore (plano gratuito)
 - **Deploy**: Vercel
 
-## Desenvolvimento local
+## 1. Configurar Firebase (obrigatório, ~5 min)
+
+1. Abra [Firebase Console](https://console.firebase.google.com/) → projeto `gen-lang-client-0360650018`
+2. **Authentication** → Sign-in method → **E-mail/Senha** → **Habilitar**
+3. **Firestore Database** → Criar banco (modo produção, região `southamerica-east1` se disponível)
+4. **Firestore** → **Rules** → cole o conteúdo de `firestore.rules` → **Publicar**
+5. Crie o usuário:
+   ```bash
+   node scripts/create-user.mjs
+   ```
+   Ou manualmente: Authentication → Users → Add user
+
+## 2. Desenvolvimento local
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra [http://localhost:3000](http://localhost:3000).
+Abra http://localhost:3000 e faça login.
 
-## Configuração Firebase
+## 3. Publicar no GitHub
 
-1. Acesse [Firebase Console](https://console.firebase.google.com/) → projeto `gen-lang-client-0360650018`
-2. **Authentication** → Sign-in method → habilite **E-mail/Senha**
-3. **Firestore** → crie o banco (modo produção) e publique as regras de `firestore.rules`
-4. Crie o usuário:
-   ```bash
-   node scripts/create-user.mjs
-   ```
+```bash
+# Crie o repositório em github.com/maicon-gois/controle-de-gastos-e-dividas
+git remote add origin https://github.com/maicon-gois/controle-de-gastos-e-dividas.git
+git branch -M main
+git push -u origin main
+```
 
-## Deploy na Vercel
+## 4. Deploy na Vercel
 
-1. Faça push para o GitHub (`maicon-gois/controle-de-gastos-e-dividas`)
-2. Importe o repositório na [Vercel](https://vercel.com)
-3. Variáveis de ambiente (opcional — já há defaults no código):
-   - `NEXT_PUBLIC_FIREBASE_API_KEY`
-   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-   - `NEXT_PUBLIC_FIREBASE_APP_ID`
+1. Acesse [vercel.com/new](https://vercel.com/new)
+2. Importe o repositório `maicon-gois/controle-de-gastos-e-dividas`
+3. Framework: **Next.js** (detecta automaticamente)
+4. Clique **Deploy**
 
-## iPhone (PWA)
+As variáveis Firebase já têm defaults no código. Opcionalmente adicione as do `.env.example`.
 
-No Safari: Compartilhar → **Adicionar à Tela de Início**. O app abre em tela cheia com navegação inferior.
+## 5. Usar no iPhone
+
+1. Abra a URL da Vercel no **Safari**
+2. Toque em **Compartilhar** → **Adicionar à Tela de Início**
+3. O app abre em tela cheia com navegação inferior
+
+## Migração de dados locais
+
+No primeiro login, o app **migra automaticamente** os dados do `localStorage` para o Firestore. Seus lançamentos locais não se perdem.
 
 ## Segurança
 
 - Login obrigatório (Firebase Auth)
 - Dados isolados por `userId` no Firestore
-- Regras de segurança em `firestore.rules`
+- Regras em `firestore.rules`
 - HTTPS automático na Vercel
