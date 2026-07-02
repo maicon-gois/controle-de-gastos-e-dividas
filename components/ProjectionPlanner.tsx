@@ -23,6 +23,7 @@ interface ProjectionPlannerProps {
   selectedYear: number;
   selectedMonth: number;
   userId?: string;
+  profileId?: import("@/lib/profiles").ProfileId;
 }
 
 const brl = (v: number) =>
@@ -36,8 +37,9 @@ export function ProjectionPlanner({
   selectedYear,
   selectedMonth,
   userId,
+  profileId = "casal",
 }: ProjectionPlannerProps) {
-  const { plans, addPlan, updatePlan, removePlan } = usePlans(userId);
+  const { plans, addPlan, updatePlan, removePlan } = usePlans(userId, profileId);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PaymentPlan | null>(null);
 

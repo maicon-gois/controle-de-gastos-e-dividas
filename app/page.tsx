@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Wand2,
   Calculator as CalculatorIcon,
   PieChart as PieChartIcon,
@@ -33,9 +35,21 @@ export default function Home() {
     transactions,
     debts,
     goals,
+    plannedPurchases,
     addTransaction,
     removeTransaction,
     updateTransaction,
+    addDebt,
+    updateDebt,
+    removeDebt,
+    addGoal,
+    updateGoal,
+    removeGoal,
+    contributeToGoal,
+    addPlannedPurchase,
+    updatePlannedPurchase,
+    removePlannedPurchase,
+    contributeToPurchase,
     generateStandardTransactions,
     isLoaded,
     user,
@@ -43,6 +57,10 @@ export default function Home() {
     signOut,
     loginError,
     loginLoading,
+    activeProfile,
+    activeProfileLabel,
+    cycleProfileUp,
+    cycleProfileDown,
   } = useTransactions();
 
   const [selectedYear, setSelectedYear] = useState(2026);
@@ -163,13 +181,39 @@ export default function Home() {
                 Dashboard
               </span>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-1.5 text-xs px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors font-medium text-zinc-300 min-h-[36px]"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sair
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-zinc-800/80 border border-zinc-700 rounded-xl px-1 py-0.5">
+                <button
+                  onClick={cycleProfileUp}
+                  className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-zinc-200"
+                  aria-label="Perfil anterior"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <div className="flex flex-col items-center px-2 min-w-[90px]">
+                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                    Perfil
+                  </span>
+                  <span className="text-xs font-semibold text-white truncate max-w-[100px]">
+                    {activeProfileLabel}
+                  </span>
+                </div>
+                <button
+                  onClick={cycleProfileDown}
+                  className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-zinc-200"
+                  aria-label="Próximo perfil"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-1.5 text-xs px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors font-medium text-zinc-300 min-h-[36px]"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sair
+              </button>
+            </div>
           </div>
 
           <div>
@@ -255,10 +299,26 @@ export default function Home() {
                 selectedYear={selectedYear}
                 selectedMonth={selectedMonth}
                 userId={user.uid}
+                profileId={activeProfile}
               />
             </Tabs.Content>
             <Tabs.Content value="dividas-metas" className="focus:outline-none">
-              <DebtsAndGoals debts={debts} goals={goals} />
+              <DebtsAndGoals
+                debts={debts}
+                goals={goals}
+                plannedPurchases={plannedPurchases}
+                onAddDebt={addDebt}
+                onUpdateDebt={updateDebt}
+                onRemoveDebt={removeDebt}
+                onAddGoal={addGoal}
+                onUpdateGoal={updateGoal}
+                onRemoveGoal={removeGoal}
+                onContributeGoal={contributeToGoal}
+                onAddPurchase={addPlannedPurchase}
+                onUpdatePurchase={updatePlannedPurchase}
+                onRemovePurchase={removePlannedPurchase}
+                onContributePurchase={contributeToPurchase}
+              />
             </Tabs.Content>
             <Tabs.Content value="calculadora" className="focus:outline-none flex justify-center py-4 sm:py-8">
               <Calculator />

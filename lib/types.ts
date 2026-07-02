@@ -15,28 +15,49 @@ export interface Transaction {
   amount: number;
   date: string; // ISO string
   userId?: string;
+  profileId?: string;
   tags?: string[];
 }
+
+export type DebtStatus = 'atrasada' | 'em_negociacao' | 'paga' | 'descontado_folha';
 
 export interface Debt {
   id: string;
   userId?: string;
+  profileId?: string;
   creditor: string;
   description: string;
   amount: number;
-  status: 'atrasada' | 'em_negociacao' | 'paga' | 'descontado_folha';
+  status: DebtStatus;
   dueDate?: string;
   strategy?: string;
+  interestRate?: number; // juros ao mês em % (ex: 2.5)
+  minPayment?: number; // pagamento mínimo mensal
 }
 
 export interface Goal {
   id: string;
   userId?: string;
+  profileId?: string;
   title: string;
   targetAmount: number;
   savedAmount: number;
   deadline: string;
   description?: string;
+}
+
+export type PurchasePriority = "alta" | "media" | "baixa";
+
+export interface PlannedPurchase {
+  id: string;
+  userId?: string;
+  profileId?: string;
+  name: string;
+  estimatedAmount: number;
+  savedAmount: number;
+  targetDate: string;
+  priority?: PurchasePriority;
+  notes?: string;
 }
 
 /** Plano de quitação recorrente: entra como uma linha em todos os meses. */

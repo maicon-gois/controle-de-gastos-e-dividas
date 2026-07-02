@@ -23,6 +23,12 @@ service cloud.firestore {
       allow update, delete: if isOwner() && resource.data.userId == request.auth.uid;
     }
 
+    match /plannedPurchases/{id} {
+      allow read: if isOwner() && resource.data.userId == request.auth.uid;
+      allow create: if isOwner() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isOwner() && resource.data.userId == request.auth.uid;
+    }
+
     match /users/{userId}/settings/{doc} {
       allow read, write: if isOwner() && request.auth.uid == userId;
     }
