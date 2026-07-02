@@ -39,35 +39,14 @@ export interface Goal {
   description?: string;
 }
 
-export type PriorityStrategy = "menor" | "maior" | "oportunidade";
-
-export interface RecurringItem {
+/** Plano de quitação recorrente: entra como uma linha em todos os meses. */
+export interface PaymentPlan {
   id: string;
-  description: string;
-  amount: number;
-  categoryId: string;
-}
-
-export interface IncomeItem {
-  id: string;
-  description: string;
-  amount: number;
-}
-
-export interface ProjectionAssumptions {
-  incomes: IncomeItem[];
-  recurring: RecurringItem[];
-  startYear: number;
-  startMonth: number; // 1-12
-  horizonMonths: number;
-  startingSaved: number;
-  priorityStrategy: PriorityStrategy;
-}
-
-export interface MonthDecision {
-  monthKey: string; // "YYYY-MM"
-  allocations: { debtId: string; amount: number }[];
-  saved: number;
+  label: string; // ex: "Plano de quitação Fiesta"
+  debtId?: string; // dívida vinculada (opcional)
+  monthlyAmount: number; // valor pago por mês
+  totalAmount: number; // total a quitar
+  startMonthKey: string; // "YYYY-MM" a partir de quando começa
 }
 
 export const CATEGORIES: Category[] = [

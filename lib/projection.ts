@@ -1,22 +1,8 @@
-import {
-  Debt,
-  MonthDecision,
-  ProjectionAssumptions,
-} from "./types";
+import { Transaction, Debt, PaymentPlan } from "./types";
 
 const MONTH_NAMES = [
-  "Jan",
-  "Fev",
-  "Mar",
-  "Abr",
-  "Mai",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Set",
-  "Out",
-  "Nov",
-  "Dez",
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
 ];
 
 export function monthKeyOf(year: number, month: number) {
@@ -31,12 +17,11 @@ function round2(n: number) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-export interface DebtSnapshot {
-  id: string;
-  creditor: string;
-  description: string;
-  remaining: number;
-  status: Debt["status"];
+export interface MonthPlanLine {
+  planId: string;
+  label: string;
+  amount: number;
+  quitaAqui: boolean;
 }
 
 export interface ProjectedMonth {
@@ -44,170 +29,120 @@ export interface ProjectedMonth {
   year: number;
   month: number;
   label: string;
-  income: number;
-  expenses: number;
-  baseSurplus: number;
-  carryIn: number;
-  available: number;
+  hasRealData: boolean;
+  realIncome: number;
+  realExpense: number;
+  realLeftover: number; // sobra real do mês (entradas - saídas)
+  carryIn: number; // guardado dos meses anteriores
+  available: number; // realLeftover + carryIn
+  planLines: MonthPlanLine[];
+  totalPlans: number; // soma das linhas de plano no mês
+  free: number; // available - totalPlans (o que sobra livre / é guardado)
+  shortfall: boolean; // available não cobre os planos
+}
+
+export interface PlanProgress {
+  planId: string;
+  label: string;
+  monthlyAmount: number;
+  total: number;
   paid: number;
-  saved: number;
-  free: number;
-  allocations: { debtId: string; creditor: string; amount: number }[];
-  priorityDebtId: string | null;
-  priorityCreditor: string | null;
-  priorityRemainingBefore: number;
-  monthsToClearPriority: number | null;
-  decided: boolean;
-  debtsSnapshot: DebtSnapshot[];
-  remainingDebtTotal: number;
+  remaining: number;
+  done: boolean;
+  clearMonthLabel: string | null;
 }
 
 export interface ProjectionResult {
   months: ProjectedMonth[];
-  income: number;
-  expenses: number;
-  baseSurplus: number;
-  totalActiveDebt: number;
-  debtFreeMonthLabel: string | null;
-  totalPaidPlanned: number;
+  plans: PlanProgress[];
+  selectedLeftover: number;
+  totalPlansMonthly: number;
 }
 
-/** Active debts we plan to attack (folha excluded — já sai do salário). */
-export function activeDebts(debts: Debt[]) {
-  return debts.filter(
-    (d) => d.status === "atrasada" || d.status === "em_negociacao"
-  );
-}
-
-function orderDebts(
-  debts: Debt[],
-  strategy: ProjectionAssumptions["priorityStrategy"]
-): Debt[] {
-  const arr = activeDebts(debts).slice();
-  switch (strategy) {
-    case "menor":
-      arr.sort((a, b) => a.amount - b.amount);
-      break;
-    case "maior":
-      arr.sort((a, b) => b.amount - a.amount);
-      break;
-    case "oportunidade":
-      arr.sort((a, b) => {
-        const na = a.status === "em_negociacao" ? 0 : 1;
-        const nb = b.status === "em_negociacao" ? 0 : 1;
-        if (na !== nb) return na - nb;
-        return a.amount - b.amount;
-      });
-      break;
-  }
-  return arr;
-}
-
+/**
+ * Projeção ancorada no mês selecionado.
+ * - Cada mês usa a sobra REAL (entradas - saídas dos lançamentos reais).
+ * - Cada plano de quitação entra como uma linha em todos os meses (do início até quitar).
+ * - O que sobra livre é guardado e soma no mês seguinte (carry-over).
+ */
 export function computeProjection(
+  transactions: Transaction[],
   debts: Debt[],
-  assumptions: ProjectionAssumptions,
-  decisions: Record<string, MonthDecision>
+  plans: PaymentPlan[],
+  startYear: number,
+  startMonth: number,
+  horizonMonths: number,
+  startingSaved = 0
 ): ProjectionResult {
-  const ordered = orderDebts(debts, assumptions.priorityStrategy);
-  const remaining: Record<string, number> = {};
-  ordered.forEach((d) => (remaining[d.id] = d.amount));
+  // Agrupa lançamentos reais por mês
+  const byMonth: Record<string, { income: number; expense: number; count: number }> = {};
+  transactions.forEach((t) => {
+    const d = new Date(t.date);
+    const key = monthKeyOf(d.getFullYear(), d.getMonth() + 1);
+    if (!byMonth[key]) byMonth[key] = { income: 0, expense: 0, count: 0 };
+    byMonth[key].count++;
+    if (t.type === "entrada") byMonth[key].income += t.amount;
+    else byMonth[key].expense += t.amount;
+  });
 
-  const income = round2(
-    assumptions.incomes.reduce((a, b) => a + (Number(b.amount) || 0), 0)
-  );
-  const expenses = round2(
-    assumptions.recurring.reduce((a, b) => a + (Number(b.amount) || 0), 0)
-  );
-  const baseSurplus = round2(income - expenses);
-  const totalActiveDebt = round2(ordered.reduce((a, d) => a + d.amount, 0));
+  const cumulative: Record<string, number> = {};
+  const clearMonth: Record<string, string | null> = {};
+  plans.forEach((p) => {
+    cumulative[p.id] = 0;
+    clearMonth[p.id] = null;
+  });
 
   const months: ProjectedMonth[] = [];
-  let carryIn = round2(assumptions.startingSaved || 0);
-  let y = assumptions.startYear;
-  let m = assumptions.startMonth;
-  let debtFreeMonthLabel: string | null = null;
-  let totalPaidPlanned = 0;
+  let carryIn = round2(startingSaved);
+  let y = startYear;
+  let m = startMonth;
 
-  for (let i = 0; i < assumptions.horizonMonths; i++) {
+  for (let i = 0; i < horizonMonths; i++) {
     const key = monthKeyOf(y, m);
     const label = monthLabelOf(y, m);
-    const available = round2(baseSurplus + carryIn);
+    const real = byMonth[key] || { income: 0, expense: 0, count: 0 };
+    const realIncome = round2(real.income);
+    const realExpense = round2(real.expense);
+    const realLeftover = round2(realIncome - realExpense);
+    const available = round2(realLeftover + carryIn);
 
-    // snapshot before applying this month's decision
-    const debtsSnapshot: DebtSnapshot[] = ordered
-      .filter((d) => remaining[d.id] > 0.009)
-      .map((d) => ({
-        id: d.id,
-        creditor: d.creditor,
-        description: d.description,
-        remaining: round2(remaining[d.id]),
-        status: d.status,
-      }));
+    const planLines: MonthPlanLine[] = [];
+    let totalPlans = 0;
 
-    const priority = ordered.find((d) => remaining[d.id] > 0.009) || null;
-    const priorityRemainingBefore = priority ? round2(remaining[priority.id]) : 0;
-
-    let paid = 0;
-    let saved = 0;
-    const allocations: { debtId: string; creditor: string; amount: number }[] = [];
-
-    const decision = decisions[key];
-    if (decision) {
-      decision.allocations.forEach((al) => {
-        const rem = remaining[al.debtId] ?? 0;
-        const pay = Math.min(Number(al.amount) || 0, rem);
-        if (pay > 0) {
-          remaining[al.debtId] = round2(rem - pay);
-          paid = round2(paid + pay);
-          const d = ordered.find((x) => x.id === al.debtId);
-          allocations.push({
-            debtId: al.debtId,
-            creditor: d?.creditor || "",
-            amount: round2(pay),
-          });
-        }
-      });
-      saved = Math.max(0, round2(Number(decision.saved) || 0));
+    for (const p of plans) {
+      if (key < p.startMonthKey) continue;
+      const remaining = round2(p.totalAmount - cumulative[p.id]);
+      if (remaining <= 0.009) continue; // já quitado
+      const amount = round2(Math.min(p.monthlyAmount, remaining));
+      cumulative[p.id] = round2(cumulative[p.id] + amount);
+      const quitaAqui = cumulative[p.id] >= p.totalAmount - 0.009;
+      if (quitaAqui && !clearMonth[p.id]) clearMonth[p.id] = label;
+      planLines.push({ planId: p.id, label: p.label, amount, quitaAqui });
+      totalPlans = round2(totalPlans + amount);
     }
 
-    totalPaidPlanned = round2(totalPaidPlanned + paid);
-    const free = round2(available - paid - saved);
-    const remainingDebtTotal = round2(
-      ordered.reduce((a, d) => a + remaining[d.id], 0)
-    );
-
-    if (remainingDebtTotal <= 0.009 && !debtFreeMonthLabel && totalActiveDebt > 0) {
-      debtFreeMonthLabel = label;
-    }
+    const free = round2(available - totalPlans);
+    const shortfall = free < -0.009;
+    const carryOut = free > 0 ? free : 0;
 
     months.push({
       key,
       year: y,
       month: m,
       label,
-      income,
-      expenses,
-      baseSurplus,
+      hasRealData: real.count > 0,
+      realIncome,
+      realExpense,
+      realLeftover,
       carryIn,
       available,
-      paid,
-      saved,
+      planLines,
+      totalPlans,
       free,
-      allocations,
-      priorityDebtId: priority?.id || null,
-      priorityCreditor: priority?.creditor || null,
-      priorityRemainingBefore,
-      monthsToClearPriority:
-        priority && available > 0
-          ? Math.ceil(priorityRemainingBefore / available)
-          : null,
-      decided: !!decision,
-      debtsSnapshot,
-      remainingDebtTotal,
+      shortfall,
     });
 
-    // only the explicitly saved amount rolls into next month
-    carryIn = saved;
+    carryIn = carryOut;
     m++;
     if (m > 12) {
       m = 1;
@@ -215,13 +150,26 @@ export function computeProjection(
     }
   }
 
+  const plansProgress: PlanProgress[] = plans.map((p) => {
+    const paid = round2(Math.min(cumulative[p.id], p.totalAmount));
+    return {
+      planId: p.id,
+      label: p.label,
+      monthlyAmount: p.monthlyAmount,
+      total: p.totalAmount,
+      paid,
+      remaining: round2(p.totalAmount - paid),
+      done: paid >= p.totalAmount - 0.009,
+      clearMonthLabel: clearMonth[p.id],
+    };
+  });
+
+  const selected = months[0];
+
   return {
     months,
-    income,
-    expenses,
-    baseSurplus,
-    totalActiveDebt,
-    debtFreeMonthLabel,
-    totalPaidPlanned,
+    plans: plansProgress,
+    selectedLeftover: selected ? selected.realLeftover : 0,
+    totalPlansMonthly: round2(plans.reduce((a, p) => a + p.monthlyAmount, 0)),
   };
 }

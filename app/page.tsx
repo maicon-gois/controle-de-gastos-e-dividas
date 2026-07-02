@@ -61,9 +61,7 @@ export default function Home() {
   }
 
   if (!user) {
-    return (
-      <LoginForm onLogin={login} error={loginError} loading={loginLoading} />
-    );
+    return <LoginForm onLogin={login} error={loginError} loading={loginLoading} />;
   }
 
   const filteredTransactions = transactions.filter((t) => {
@@ -251,7 +249,13 @@ export default function Home() {
               />
             </Tabs.Content>
             <Tabs.Content value="projecao" className="focus:outline-none">
-              <ProjectionPlanner debts={debts} userId={user.uid} />
+              <ProjectionPlanner
+                transactions={transactions}
+                debts={debts}
+                selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+                userId={user.uid}
+              />
             </Tabs.Content>
             <Tabs.Content value="dividas-metas" className="focus:outline-none">
               <DebtsAndGoals debts={debts} goals={goals} />
