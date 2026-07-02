@@ -69,7 +69,6 @@ async function migrateLegacyDocs(uid: string) {
   if (typeof window !== "undefined" && localStorage.getItem(legacyMigrationKey(uid))) return;
 
   const collections = ["transactions", "debts", "goals", "plannedPurchases"] as const;
-  let migrated = false;
 
   for (const col of collections) {
     const snap = await getDocs(query(collection(db, col), where("userId", "==", uid)));
@@ -77,16 +76,14 @@ async function migrateLegacyDocs(uid: string) {
     snap.forEach((d) => {
       const data = d.data();
       if (!data.profileId) {
-        migrated = true;
         updates.push(setDoc(doc(db, col, d.id), { profileId: "casal" }, { merge: true }));
       }
     });
     await Promise.all(updates);
   }
 
-  if (migrated && typeof window !== "undefined") {
-    localStorage.setItem(legacyMigrationKey(uid), "true");
-  } else if (typeof window !== "undefined") {
+  // marca como migrado (mesmo sem docs a carimbar) para não reprocessar em cada carga
+  if (typeof window !== "undefined") {
     localStorage.setItem(legacyMigrationKey(uid), "true");
   }
 }
