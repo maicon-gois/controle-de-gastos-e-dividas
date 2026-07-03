@@ -174,33 +174,45 @@ export default function Home() {
 
         {/* Header */}
         <header className="flex flex-col gap-4 sm:gap-6 bg-zinc-900/50 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-zinc-800/80 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Wallet className="w-5 h-5" />
-              <span className="font-semibold tracking-widest uppercase text-xs sm:text-sm">
-                Dashboard
-              </span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* Linha superior: título + Sair (Sair fica aqui só no mobile) */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <Wallet className="w-5 h-5" />
+                <span className="font-semibold tracking-widest uppercase text-xs sm:text-sm">
+                  Dashboard
+                </span>
+              </div>
+              <button
+                onClick={signOut}
+                className="sm:hidden flex items-center gap-1.5 text-xs px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors font-medium text-zinc-300 min-h-[36px]"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sair
+              </button>
             </div>
+
+            {/* Seletor de perfil: linha própria no mobile, inline no desktop */}
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-zinc-800/80 border border-zinc-700 rounded-xl px-1 py-0.5">
+              <div className="flex flex-1 sm:flex-none items-center justify-center gap-1 bg-zinc-800/80 border border-zinc-700 rounded-xl px-1 py-1">
                 <button
                   onClick={cycleProfileUp}
-                  className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-zinc-200"
+                  className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-zinc-200 shrink-0"
                   aria-label="Perfil anterior"
                 >
                   <ChevronUp className="w-4 h-4" />
                 </button>
-                <div className="flex flex-col items-center px-2 min-w-[90px]">
+                <div className="flex flex-col items-center px-2 min-w-[100px]">
                   <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
                     Perfil
                   </span>
-                  <span className="text-xs font-semibold text-white truncate max-w-[100px]">
+                  <span className="text-xs font-semibold text-white truncate max-w-[160px]">
                     {activeProfileLabel}
                   </span>
                 </div>
                 <button
                   onClick={cycleProfileDown}
-                  className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-zinc-200"
+                  className="p-1.5 hover:bg-zinc-700 rounded-lg transition-colors text-zinc-400 hover:text-zinc-200 shrink-0"
                   aria-label="Próximo perfil"
                 >
                   <ChevronDown className="w-4 h-4" />
@@ -208,7 +220,7 @@ export default function Home() {
               </div>
               <button
                 onClick={signOut}
-                className="flex items-center gap-1.5 text-xs px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors font-medium text-zinc-300 min-h-[36px]"
+                className="hidden sm:flex items-center gap-1.5 text-xs px-3 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors font-medium text-zinc-300 min-h-[36px]"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Sair
