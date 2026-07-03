@@ -13,6 +13,7 @@ import {
   PiggyBank,
   Trash2,
   ShoppingBag,
+  RotateCcw,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -95,6 +96,17 @@ export function DebtsAndGoals({
   const debtsList = [...debts]
     .filter((d) => d.status !== "paga")
     .sort((a, b) => b.amount - a.amount);
+  const paidDebts = [...debts]
+    .filter((d) => d.status === "paga")
+    .sort((a, b) => b.amount - a.amount);
+
+  const revertDebt = (id: string) => onUpdateDebt(id, { status: "atrasada" });
+  const revertAllPaid = () => {
+    if (paidDebts.length === 0) return;
+    if (confirm(`Reverter ${paidDebts.length} dívida(s) concluída(s) de volta para ativas?`)) {
+      paidDebts.forEach((d) => onUpdateDebt(d.id, { status: "atrasada" }));
+    }
+  };
 
   const budgetNum = Number(budget) || 0;
 
@@ -477,6 +489,56 @@ export function DebtsAndGoals({
               );
             })}
           </div>
+
+          {/* Dívidas concluídas */}
+          {paidDebts.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-zinc-800">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Concluídas ({paidDebts.length})
+                </h4>
+                <button
+                  onClick={revertAllPaid}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg font-semibold transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Reverter todas
+                </button>
+              </div>
+              <div className="space-y-2">
+                {paidDebts.map((debt) => (
+                  <div
+                    key={debt.id}
+                    className="flex items-center gap-3 bg-emerald-900/5 border border-emerald-900/20 rounded-xl px-3 py-2.5"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-zinc-300 truncate line-through decoration-zinc-600">
+                        {debt.creditor}
+                      </p>
+                      <p className="text-xs text-zinc-500">{brl(debt.amount)}</p>
+                    </div>
+                    <button
+                      onClick={() => revertDebt(debt.id)}
+                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-amber-600 text-zinc-400 hover:text-white transition-colors shrink-0"
+                      aria-label="Reverter dívida"
+                      title="Reverter para ativa"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => confirmRemoveDebt(debt.id)}
+                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-red-600 text-zinc-400 hover:text-white transition-colors shrink-0"
+                      aria-label="Excluir permanentemente"
+                      title="Excluir permanentemente"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Goals */}
