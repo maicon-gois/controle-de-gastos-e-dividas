@@ -9,7 +9,6 @@ import { useTimeline, TimelineEvent } from "@/hooks/useTimeline";
 import { genId } from "@/lib/seed-data";
 import {
   Mic,
-  MicOff,
   Plus,
   CheckCircle2,
   TrendingUp,
@@ -84,6 +83,44 @@ export function TimelineView({
   const [editingTemplate, setEditingTemplate] = useState<TimelineTemplate | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const transcriptRef = useRef("");
+  const isListeningRef = useRef(false);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const SILENCE_MS = 1800;
+  const MAX_MS = 20000;
+
+  const clearVoiceTimers = useCallback(() => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
+    silenceTimerRef.current = null;
+    maxTimerRef.current = null;
+  }, []);
+
+  const finishListening = useCallback(
+    (text?: string) => {
+      if (!isListeningRef.current) return;
+      clearVoiceTimers();
+      isListeningRef.current = false;
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+      setListening(false);
+
+      const finalText = (text ?? transcriptRef.current).trim();
+      if (finalText) {
+        setTranscript(finalText);
+        const parsed = parseVoiceText(finalText, templates);
+        setVoicePreview(parsed.length > 0 ? parsed : null);
+      }
+    },
+    [clearVoiceTimers, templates]
+  );
+
+  const resetSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = setTimeout(() => finishListening(), SILENCE_MS);
+  }, [finishListening, SILENCE_MS]);
 
   const totalEntradas = events
     .filter((e) => e.type === "entrada")
@@ -151,35 +188,50 @@ export function TimelineView({
       return;
     }
 
+    clearVoiceTimers();
+    transcriptRef.current = "";
+    setTranscript("");
+    setVoicePreview(null);
+
     const rec = new SR();
     rec.lang = "pt-BR";
-    rec.continuous = false;
+    rec.continuous = true;
     rec.interimResults = true;
 
     rec.onresult = (e: SpeechRecognitionEvent) => {
       const text = Array.from(e.results)
         .map((r) => r[0].transcript)
         .join(" ");
+      transcriptRef.current = text;
       setTranscript(text);
-      if (e.results[e.results.length - 1].isFinal) {
-        const parsed = parseVoiceText(text, templates);
-        setVoicePreview(parsed);
-        setListening(false);
+      resetSilenceTimer();
+
+      const last = e.results[e.results.length - 1];
+      if (last.isFinal) {
+        finishListening(text);
       }
     };
 
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
+    rec.onerror = () => finishListening();
+    rec.onend = () => {
+      if (isListeningRef.current) finishListening();
+    };
 
     recognitionRef.current = rec;
-    setTranscript("");
-    setVoicePreview(null);
+    isListeningRef.current = true;
     setListening(true);
     rec.start();
+
+    maxTimerRef.current = setTimeout(() => finishListening(), MAX_MS);
   };
 
-  const stopListening = () => {
+  const cancelListening = () => {
+    clearVoiceTimers();
+    isListeningRef.current = false;
     recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    transcriptRef.current = "";
+    setTranscript("");
     setListening(false);
   };
 
@@ -251,24 +303,28 @@ export function TimelineView({
 
       {/* Botão de voz */}
       <div className="flex flex-col items-center gap-3">
-        <button
-          onClick={listening ? stopListening : startListening}
-          className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-lg ${
-            listening
-              ? "bg-red-600 hover:bg-red-500 text-white animate-pulse"
-              : "bg-violet-600 hover:bg-violet-500 text-white"
-          }`}
-        >
-          {listening ? (
-            <>
-              <MicOff className="w-6 h-6" /> Parar
-            </>
-          ) : (
-            <>
-              <Mic className="w-6 h-6" /> Falar evento
-            </>
-          )}
-        </button>
+        {listening ? (
+          <div className="flex flex-col items-center gap-2 w-full">
+            <div className="flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg bg-violet-600/80 text-white animate-pulse shadow-lg">
+              <Mic className="w-6 h-6" />
+              Gravando…
+            </div>
+            <p className="text-xs text-zinc-400">Para sozinha ao ficar em silêncio</p>
+            <button
+              onClick={cancelListening}
+              className="text-xs text-zinc-500 hover:text-zinc-300 underline"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={startListening}
+            className="flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all shadow-lg bg-violet-600 hover:bg-violet-500 text-white"
+          >
+            <Mic className="w-6 h-6" /> Falar evento
+          </button>
+        )}
         <p className="text-xs text-zinc-500 text-center max-w-xs">
           Ex: &quot;hoje recebi meu salário, paguei a pensão, a luz e dei 300 reais pra minha mãe&quot;
         </p>
