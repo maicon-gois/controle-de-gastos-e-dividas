@@ -18,6 +18,7 @@ import {
   PieChart as PieChartIcon,
   CalendarClock,
   LogOut,
+  Activity,
 } from "lucide-react";
 import { AddTransactionModal } from "@/components/AddTransactionModal";
 import { TransactionList } from "@/components/TransactionList";
@@ -26,6 +27,7 @@ import { DebtsAndGoals } from "@/components/DebtsAndGoals";
 import { Calculator } from "@/components/Calculator";
 import { ConsumptionAnalysis } from "@/components/ConsumptionAnalysis";
 import { ProjectionPlanner } from "@/components/ProjectionPlanner";
+import { TimelineView } from "@/components/TimelineView";
 import { LoginForm } from "@/components/LoginForm";
 import { MobileNav } from "@/components/MobileNav";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -274,6 +276,9 @@ export default function Home() {
             <Tabs.Trigger value="planilha" className={tabTriggerClass}>
               <Table2 className="w-4 h-4" /> Planilha
             </Tabs.Trigger>
+            <Tabs.Trigger value="linha-do-tempo" className={`${tabTriggerClass} data-[state=active]:bg-violet-900/20 data-[state=active]:text-violet-400`}>
+              <Activity className="w-4 h-4" /> Linha do Tempo
+            </Tabs.Trigger>
             <Tabs.Trigger value="projecao" className={`${tabTriggerClass} data-[state=active]:bg-emerald-900/20 data-[state=active]:text-emerald-400`}>
               <CalendarClock className="w-4 h-4" /> Projeção
             </Tabs.Trigger>
@@ -302,6 +307,16 @@ export default function Home() {
                 onAdd={addTransaction}
                 onUpdate={updateTransaction}
                 onRemove={removeTransaction}
+              />
+            </Tabs.Content>
+            <Tabs.Content value="linha-do-tempo" className="focus:outline-none">
+              <TimelineView
+                profileId={activeProfile}
+                userId={user.uid}
+                year={selectedYear}
+                month={selectedMonth}
+                onAddTransaction={addTransaction}
+                onRemoveTransaction={removeTransaction}
               />
             </Tabs.Content>
             <Tabs.Content value="projecao" className="focus:outline-none">
